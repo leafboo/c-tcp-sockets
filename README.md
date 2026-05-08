@@ -19,6 +19,7 @@ be using will be TCP, and uses sockets under the hood!
 ## Mental model
 There will be two programs, `server.c` and `client.c`. 
 ![server-client diagram](https://www.codequoi.com/images/socket-c/sockets-en.drawio.png)
+> Image credit: [codequoi.com](https://www.codequoi.com/en/sockets-and-network-programming-in-c/)
 1. Both the server and the client will create a socket with the `socket()` function. 
 2. In the server program, we will use `bind()` to give an address to the socket.
 3. `listen()` converts a socket into a listening socket and enables the kernel to make a queue which
