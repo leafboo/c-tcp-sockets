@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     // Step 4: read and write 
     char *msg_frm_server = malloc(1024);
     if (recv(client_socket_fd, msg_frm_server, malloc_usable_size(msg_frm_server), 0) < 0) {
-	perror("connect()");
+	perror("recv()");
 	exit(EXIT_FAILURE);
     }
 
