@@ -31,3 +31,4 @@ IP:port; this is called the 4 tuple of a socket.
 5. The `connect()` function establishes a connection to a listening socket in a server. 
 
 ## One server multiple clients 
+edit later
