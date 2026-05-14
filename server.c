@@ -5,12 +5,13 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-// void *receive_message(void *args) {
-//     if(recv(int fd, void *buf, size_t n, int flags) < 0) {
-// 	perror("recv()");
-// 	exit(EXIT_FAILURE);
-//     }
-// }
+typedef struct {
+    int socket_fd;
+    struct sockaddr_in connected_socket_address;
+    socklen_t connected_socket_addr_len;
+} Client;
+
+void *recv_function(void *client);
 
 int main(int argc, char *argv[]) {
 
@@ -33,7 +34,7 @@ int main(int argc, char *argv[]) {
 	exit(EXIT_FAILURE);
     }
 
-    // Step 4: listen for connections
+    // Step 4: transform the active socket to a passive (listening) socket
     printf("listening for client connections...\n");
     if (listen(listening_socket_fd, 5) < 0) {
 	perror("listen()");
@@ -41,39 +42,66 @@ int main(int argc, char *argv[]) {
     }
 
     // Step 5: accept the incoming connections that are in the queue
-    // NOTE: must accept multiple clients
-    // 
     // while (1) {
-    // 	accept()
-    // 	message client that they have connected to the server using send()
-    // 	thread for recv()
-    // 	thread for send()
+    // 	accept 
+    // 	make a thread for the recv()
+    //	in the thread:
+    //		if a message is received from a client, send() the message to other clients
     // }
-    struct sockaddr_in connected_socket_address;
-    memset(&connected_socket_address, 0, sizeof(connected_socket_address)); // sets all the members of a struct to 0
+    // in the custom client struct, I need the members:
+    // int socket_fd;
+    // struct sockaddr_in connected_socket_address;
+    // socklen_t connected_socket_addr_len
+    //
+    Client clients[5]; // we can have 5 connected clients socket
+    int counter = 0;
 
-    socklen_t connected_socket_addr_len = sizeof(connected_socket_address);
-    int connected_socket_fd = accept(listening_socket_fd, (struct sockaddr *)&connected_socket_address, &connected_socket_addr_len); // Note: accept() is a blocking call
-    if (connected_socket_fd < 0) {
-	perror("accept()");
-	exit(EXIT_FAILURE);
+    while (counter < 5) {
+    
+	memset(&clients[counter].connected_socket_address, 0, sizeof(clients[counter].connected_socket_address)); // sets all the members of a struct to 0
+	// TODO: simplify this code later
+	socklen_t connected_socket_addr_len = sizeof(clients[counter].connected_socket_address);
+	clients[counter].socket_fd = accept(listening_socket_fd, (struct sockaddr *)&(clients[counter].connected_socket_address), &connected_socket_addr_len); // Note: accept() is a blocking call
+																	    //
+	if (clients[counter].socket_fd < 0) {
+	    perror("accept()");
+	    exit(EXIT_FAILURE);
+	}
+
+	// Step 6: send message to client
+	char *message = "You have reached the server";
+	if (send(clients[counter].socket_fd, message, strlen(message), 0) < 0) {
+	    perror("accept()");
+	    exit(EXIT_FAILURE);
+	}
+
+	// Step 7: make a thread for receiving messages from the client
+	pthread_t client1_thread;
+	pthread_create(&client1_thread, NULL, recv_function, &(clients[counter])); // TODO: Pass the connected_socket_fd to the recv_function here
+
+	printf("A client has connected!\n");
     }
 
-    // Step 6: send message to client
-    char *message = "You have reached the server";
-    if (send(connected_socket_fd, message, strlen(message), 0) < 0) {
-	perror("accept()");
-	exit(EXIT_FAILURE);
-    }
-
-	//    // Step 7: read and write loop
-	//    while (1) {
-	// // prompt the user to send a message
-	// pthread_t recv_thread;
-	// pthread_create(&recv_thread, NULL, receive_message, NULL);
-	// // receive messages sent by the client and print it to stdout
-	//    }
-
-    printf("A client has connected!\n");
     return 0;
+}
+
+void *recv_function(void *client) {
+
+    Client *c = client; 
+
+    while (1) {
+	char *msg_frm_client = malloc(1024);
+
+	if (recv(c->socket_fd, msg_frm_client, 1024, 0) < 0) {
+	    free(msg_frm_client);
+	    perror("recv()");
+	    exit(EXIT_FAILURE);
+	}
+	// send message to other clients using their sock_fd
+	// PROBLEM: this doesn't know the socket_fd of the clients that came after it
+	printf("Message from the client: %s\n", msg_frm_client);
+	free(msg_frm_client);
+    }
+
+    return NULL;
 }
