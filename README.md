@@ -18,7 +18,7 @@ server's job is to get the message from one client and send it to all other clie
 connected to the server.
 
 ## Understanding the TCP Client-Server Flow
-![server-client diagram](https://www.codequoi.com/images/socket-c/sockets-en.drawio.png)
+![server-client diagram](/images/c-tcp-sockets-diagram.png)
 > Image credit: [codequoi.com](https://www.codequoi.com/en/sockets-and-network-programming-in-c/)
 1. Both the server and the client will create a socket with the `socket()` function. 
 2. In the server program, we will use `bind()` to give an address to the socket.
