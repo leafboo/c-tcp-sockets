@@ -31,11 +31,13 @@ IP:port; this is called the 4 tuple of a socket.
 5. The `connect()` function establishes a connection to a listening socket in a server. 
 
 ## One server multiple clients 
-![multiple client diagram](/images/one-server-multiple-clients.png)
+![multiple client diagram](/images/one-server-multiple-clients.png) <br> <br>
 When the server executes the `listen()` function, it does two things: creates a listening socket and 
 it also tells the kernel to make a queue that stores TCP connections of clients. The size of the queue
 is the backlog(2nd) argument of the `listen()`function (note: the size doesn't refer to how many clients can 
-connect to the server). Once the `accept()` function is executed, the TCP connection in the queue gets 
+connect to the server). <br> <br>
+
+When the server executes the `accept()` function, the TCP connection in the queue gets 
 released and a connection socket unique to that client is created in the server, making it possible for 
 the client and server to communicate. 
 
