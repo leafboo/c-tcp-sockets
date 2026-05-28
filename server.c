@@ -1,3 +1,4 @@
+#include <asm-generic/socket.h>
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -6,10 +7,10 @@
 #include <netinet/in.h>
 
 typedef struct {
-    int socket_fd;
-    struct sockaddr_in connected_socket_address;
-    socklen_t connected_socket_addr_len;
-} Client;
+    int sender_socket_fd;
+    int *p_connected_socket_fds; // TODO: this array should be shared accross an array of struct `ClientHandlerArgs`
+
+} ClientHandlerArgs;
 
 void *recv_function(void *client);
 
@@ -26,7 +27,15 @@ int main(int argc, char *argv[]) {
     memset(&listening_socket_address, 0, sizeof(listening_socket_address)); // sets all the members of a struct in C to 0
     listening_socket_address.sin_family = AF_INET; // sets to IPv4
     listening_socket_address.sin_port = htons(5100); // sets the port to 5100
-    listening_socket_address.sin_addr.s_addr = htonl(INADDR_ANY); // sets IP address to 0.0.0.0
+    listening_socket_address.sin_addr.s_addr = htonl(INADDR_ANY); // INADDR_ANY (0.0.0.0) allows the socket to accept connections on any local network interface when used with bind()
+								  
+    // Credits: Beej's Guide to Network Programming
+    // For removing the "bind(): Address already in use" error
+    int yes = 1;
+    //char yes='1'; // Solaris people use this
+
+    // lose the pesky "Address already in use" error messages
+    setsockopt(listening_socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
     
     // Step 3: assigns the address in the struct to the socket via socket_fd returned by socket()
     if (bind(listening_socket_fd, (struct sockaddr *)&listening_socket_address, sizeof(listening_socket_address)) < 0) {
@@ -42,64 +51,61 @@ int main(int argc, char *argv[]) {
     }
 
     // Step 5: accept the incoming connections that are in the queue
-    // while (1) {
-    // 	accept 
-    // 	make a thread for the recv()
-    //	in the thread:
-    //		if a message is received from a client, send() the message to other clients
-    // }
-    // in the custom client struct, I need the members:
-    // int socket_fd;
-    // struct sockaddr_in connected_socket_address;
-    // socklen_t connected_socket_addr_len
-    //
-    Client clients[5]; // we can have 5 connected clients socket
+    ClientHandlerArgs client_handler_args[5];
+    int connected_socket_fds[5];
     int counter = 0;
 
     while (counter < 5) {
-    
-	memset(&clients[counter].connected_socket_address, 0, sizeof(clients[counter].connected_socket_address)); // sets all the members of a struct to 0
-	// TODO: simplify this code later
-	socklen_t connected_socket_addr_len = sizeof(clients[counter].connected_socket_address);
-	clients[counter].socket_fd = accept(listening_socket_fd, (struct sockaddr *)&(clients[counter].connected_socket_address), &connected_socket_addr_len); // Note: accept() is a blocking call
-																	    //
-	if (clients[counter].socket_fd < 0) {
+	ClientHandlerArgs *p_client_handler_args = &client_handler_args[counter];
+	int sender_socket_fd = accept(listening_socket_fd, 0, 0);
+
+	p_client_handler_args->sender_socket_fd = sender_socket_fd;
+	p_client_handler_args->p_connected_socket_fds = &(connected_socket_fds[0]); // NOTE: passing connected_socket_fd is fine but I prefer the explicit version more
+
+	connected_socket_fds[counter] = sender_socket_fd;
+
+	if (sender_socket_fd < 0) {
 	    perror("accept()");
 	    exit(EXIT_FAILURE);
 	}
 
 	// Step 6: send message to client
 	char *message = "You have reached the server";
-	if (send(clients[counter].socket_fd, message, strlen(message), 0) < 0) {
+	if (send(sender_socket_fd, message, strlen(message), 0) < 0) {
 	    perror("accept()");
 	    exit(EXIT_FAILURE);
 	}
 
-	// Step 7: make a thread for receiving messages from the client
-	pthread_t client1_thread;
-	pthread_create(&client1_thread, NULL, recv_function, &(clients[counter])); // TODO: Pass the connected_socket_fd to the recv_function here
+	// Step 7: make a thread for receiving messages from the client and sending the received message to other clients in the array
+	// TODO: make an array maybe for storing the thread ID
+	pthread_t thread_id; // this variable stores the ID of the newly created thread
+	pthread_create(&thread_id, NULL, recv_function, p_client_handler_args); // TODO: Pass the connected_socket_fd to the recv_function here
 
 	printf("A client has connected!\n");
-    }
 
+	counter++;
+    }
     return 0;
 }
 
-void *recv_function(void *client) {
-
-    Client *c = client; 
+void *recv_function(void *client_handler_args) {
+    printf("recv_function reached\n");
+    ClientHandlerArgs *client = client_handler_args;
 
     while (1) {
 	char *msg_frm_client = malloc(1024);
 
-	if (recv(c->socket_fd, msg_frm_client, 1024, 0) < 0) {
+	if (recv(client->sender_socket_fd, msg_frm_client, 1024, 0) < 0) {
 	    free(msg_frm_client);
 	    perror("recv()");
 	    exit(EXIT_FAILURE);
 	}
-	// send message to other clients using their sock_fd
-	// PROBLEM: this doesn't know the socket_fd of the clients that came after it
-	printf("Message from the client: %s\n", msg_frm_client);
+	// TODO: send message to other clients using their sock_fd
+	// for loop over the connected_socket_fds[] array 
+	int num = client->p_connected_socket_fds[0];
+	printf("The value of the first element in the array is: %d \n", num);
+	num = client->p_connected_socket_fds[1];
+	printf("The value of the second element in the array is: %d \n", num);
 	free(msg_frm_client);
     }
 
