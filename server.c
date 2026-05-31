@@ -7,9 +7,13 @@
 #include <netinet/in.h>
 
 typedef struct {
-    int sender_socket_fd;
-    int *p_connected_socket_fds; // TODO: this array should be shared accross an array of struct `ClientHandlerArgs`
+    int *p_connected_socket_fds;
+    size_t arr_bytes; 
+} SharedArrayInfo;
 
+typedef struct {
+    int sender_socket_fd;
+    SharedArrayInfo *p_shared_array_info;
 } ClientHandlerArgs;
 
 void *recv_function(void *client);
@@ -51,23 +55,25 @@ int main(int argc, char *argv[]) {
     }
 
     // Step 5: accept the incoming connections that are in the queue
-    ClientHandlerArgs client_handler_args[5];
     int connected_socket_fds[5];
+    SharedArrayInfo shared_array_info = { connected_socket_fds, sizeof(connected_socket_fds) }; 
+    ClientHandlerArgs client_handler_args[5];
+    memset(&connected_socket_fds, 0, sizeof(connected_socket_fds)/sizeof(int));
     int counter = 0;
 
     while (counter < 5) {
 	ClientHandlerArgs *p_client_handler_args = &client_handler_args[counter];
 	int sender_socket_fd = accept(listening_socket_fd, 0, 0);
 
-	p_client_handler_args->sender_socket_fd = sender_socket_fd;
-	p_client_handler_args->p_connected_socket_fds = &(connected_socket_fds[0]); // NOTE: passing connected_socket_fd is fine but I prefer the explicit version more
-
-	connected_socket_fds[counter] = sender_socket_fd;
-
 	if (sender_socket_fd < 0) {
 	    perror("accept()");
 	    exit(EXIT_FAILURE);
 	}
+
+	p_client_handler_args->sender_socket_fd = sender_socket_fd;
+	p_client_handler_args->p_shared_array_info = &shared_array_info;
+
+	connected_socket_fds[counter] = sender_socket_fd;
 
 	// Step 6: send message to client
 	char *message = "You have reached the server";
@@ -77,7 +83,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Step 7: make a thread for receiving messages from the client and sending the received message to other clients in the array
-	// TODO: make an array maybe for storing the thread ID
+	// TODO: make an array (maybe) for storing the thread ID
 	pthread_t thread_id; // this variable stores the ID of the newly created thread
 	pthread_create(&thread_id, NULL, recv_function, p_client_handler_args); // TODO: Pass the connected_socket_fd to the recv_function here
 
@@ -89,7 +95,6 @@ int main(int argc, char *argv[]) {
 }
 
 void *recv_function(void *client_handler_args) {
-    printf("recv_function reached\n");
     ClientHandlerArgs *client = client_handler_args;
 
     while (1) {
@@ -100,14 +105,23 @@ void *recv_function(void *client_handler_args) {
 	    perror("recv()");
 	    exit(EXIT_FAILURE);
 	}
-	// TODO: send message to other clients using their sock_fd
-	// for loop over the connected_socket_fds[] array 
-	int num = client->p_connected_socket_fds[0];
-	printf("The value of the first element in the array is: %d \n", num);
-	num = client->p_connected_socket_fds[1];
-	printf("The value of the second element in the array is: %d \n", num);
+
+	int len = client->p_shared_array_info->arr_bytes / sizeof(int);
+
+	for (int i = 0; i < len; i++) {
+	    int sender_socket_fd = client->sender_socket_fd;
+	    int current_socket_fd = client->p_shared_array_info->p_connected_socket_fds[i]; 
+
+	    if (sender_socket_fd == current_socket_fd || current_socket_fd == 0) {
+		continue;
+	    }
+	    // TODO: send message to other clients
+	    if(send(current_socket_fd, msg_frm_client, strlen(msg_frm_client), 0) < 0) {
+		perror("accept()");
+		exit(EXIT_FAILURE);
+	    }
+	}
 	free(msg_frm_client);
     }
-
     return NULL;
 }

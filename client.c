@@ -1,4 +1,5 @@
 #include <netinet/in.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,6 +7,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <malloc.h>
+
+void *receive_messages(void *p_client_socket_fd);
 
 int main(int argc, char *argv[]) {
 
@@ -28,46 +31,53 @@ int main(int argc, char *argv[]) {
 	exit(EXIT_FAILURE);
     }
 
+    // Create a thread for listening for messages from the server
+    pthread_t thread_id;
+    pthread_create(&thread_id, NULL, receive_messages, &client_socket_fd);
+
     // Step 4: read and write 
-    // make a thread for the recv()
-    // in the thread:
-    // 		display the message received from the server(that is sent by other clients)
-    // while (1) {
-    // 	send()
-    // }
     char *msg_frm_server = malloc(1024);
     if (recv(client_socket_fd, msg_frm_server, malloc_usable_size(msg_frm_server), 0) < 0) { // NOTE: why is malloc_usable_size() used here???
 	perror("recv()");
 	exit(EXIT_FAILURE);
     }
-
     printf("message from server: %s\n", msg_frm_server);
-
-    // Step 4: make a thread for receiving the message from the server
 
     // Step 5: make a loop for sending messages to the server
     while (1) {
 	char *message = NULL;
 	size_t bufsize = 0;
 
-	if (getline(&message, &bufsize, stdin) < 0) {
+	// get the characters in stdin and put it in a buffer
+	if (getline(&message, &bufsize, stdin) < 0) { // NOTE: this also stores the newline \n in the buffer
 	    if (feof(stdin)) {
 		exit(EXIT_SUCCESS);
 		free(message);
 	    }
 	    perror("getline()");
 	    exit(EXIT_FAILURE);
-		free(message);
+	    free(message);
 	}
-	// get the characters in stdin and put it in a buffer
-	if (send(client_socket_fd, message, strlen(message) -1, 0) < 0) {
+	if (send(client_socket_fd, message, strlen(message) - 1, 0) < 0) {
 	    free(message);
 	    perror("send()");
 	    exit(EXIT_FAILURE);
 	}
 	free(message);
     }
-
-
     return 0;
+}
+
+void *receive_messages(void *p_client_socket_fd) {
+    int client_socket_fd = *(int *)p_client_socket_fd;
+    while (1) {
+	char *msg_frm_server = malloc(1024); // NOTE: I know this could overflow, but oh well I'll deal with it later
+	if(recv(client_socket_fd, msg_frm_server, malloc_usable_size(msg_frm_server), 0) < 0) {
+	    perror("recv()");
+	    exit(EXIT_FAILURE);
+	}
+	printf("Message from another client: %s \n", msg_frm_server);
+	free(msg_frm_server);
+    }
+    return NULL;
 }
