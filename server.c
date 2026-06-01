@@ -110,13 +110,12 @@ void *recv_function(void *client_handler_args) {
 
 	for (int i = 0; i < len; i++) {
 	    int sender_socket_fd = client->sender_socket_fd;
-	    int current_socket_fd = client->p_shared_array_info->p_connected_socket_fds[i]; 
+	    int recipient_socket_fd = client->p_shared_array_info->p_connected_socket_fds[i]; 
 
-	    if (sender_socket_fd == current_socket_fd || current_socket_fd == 0) {
+	    if (sender_socket_fd == recipient_socket_fd || recipient_socket_fd == 0) {
 		continue;
 	    }
-	    // TODO: send message to other clients
-	    if(send(current_socket_fd, msg_frm_client, strlen(msg_frm_client), 0) < 0) {
+	    if(send(recipient_socket_fd, msg_frm_client, strlen(msg_frm_client), 0) < 0) {
 		perror("accept()");
 		exit(EXIT_FAILURE);
 	    }
