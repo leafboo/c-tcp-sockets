@@ -19,6 +19,8 @@ typedef struct {
 void *recv_function(void *client);
 
 int main(int argc, char *argv[]) {
+    // TODO: technically not required but it's good practice to close() the socket file descriptors
+    // of connected sockets
 
     // Step 1: declare the socket
     int listening_socket_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -58,7 +60,7 @@ int main(int argc, char *argv[]) {
     int connected_socket_fds[5];
     SharedArrayInfo shared_array_info = { connected_socket_fds, sizeof(connected_socket_fds) }; 
     ClientHandlerArgs client_handler_args[5];
-    memset(&connected_socket_fds, 0, sizeof(connected_socket_fds)/sizeof(int));
+    memset(&connected_socket_fds, 0, sizeof(connected_socket_fds));
     int counter = 0;
 
     while (counter < 5) {

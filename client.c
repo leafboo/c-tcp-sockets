@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <malloc.h>
@@ -11,6 +12,7 @@
 void *receive_messages(void *p_client_socket_fd);
 
 int main(int argc, char *argv[]) {
+    // TODO: clients should be able to set their username
 
     // Step 1: declare the socket
     int client_socket_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -72,10 +74,17 @@ void *receive_messages(void *p_client_socket_fd) {
     int client_socket_fd = *(int *)p_client_socket_fd;
     while (1) {
 	char *msg_frm_server = malloc(1024); // NOTE: I know this could overflow, but oh well I'll deal with it later
-	if(recv(client_socket_fd, msg_frm_server, malloc_usable_size(msg_frm_server), 0) < 0) {
+	ssize_t bytes_received = recv(client_socket_fd, msg_frm_server, malloc_usable_size(msg_frm_server), 0);
+
+	if(bytes_received < 0) {
 	    perror("recv()");
 	    exit(EXIT_FAILURE);
+	} else if(bytes_received == 0) {
+	    free(msg_frm_server);
+	    close(client_socket_fd); // NOTE: this is not required bc the OS closes the fd when the program closes but it's considered good practice 
+	    exit(EXIT_FAILURE);
 	}
+
 	printf("Message from another client: %s \n", msg_frm_server);
 	free(msg_frm_server);
     }
