@@ -13,6 +13,13 @@ void *receive_messages(void *p_client_socket_fd);
 
 int main(int argc, char *argv[]) {
     // TODO: clients should be able to set their username
+    if (argc < 2) {
+	printf("Please input your username\n");
+	exit(EXIT_FAILURE);
+    } else if (argc > 2) {
+	printf("Number of arguments is too much\n");
+	exit(EXIT_FAILURE);
+    }
 
     // Step 1: declare the socket
     int client_socket_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -33,17 +40,23 @@ int main(int argc, char *argv[]) {
 	exit(EXIT_FAILURE);
     }
 
-    // Create a thread for listening for messages from the server
-    pthread_t thread_id;
-    pthread_create(&thread_id, NULL, receive_messages, &client_socket_fd);
+    // Send the username to the server
+    if (send(client_socket_fd, argv[1], strlen(argv[1]), 0) < 0) {
+	perror("send()");
+	exit(EXIT_FAILURE);
+    }
 
-    // Step 4: read and write 
+    // Step 4: receive the welcome message from the server
     char *msg_frm_server = malloc(1024);
     if (recv(client_socket_fd, msg_frm_server, malloc_usable_size(msg_frm_server), 0) < 0) { // NOTE: why is malloc_usable_size() used here???
 	perror("recv()");
 	exit(EXIT_FAILURE);
     }
     printf("message from server: %s\n", msg_frm_server);
+
+    // Create a thread for listening for messages from other clients
+    pthread_t thread_id;
+    pthread_create(&thread_id, NULL, receive_messages, &client_socket_fd);
 
     // Step 5: make a loop for sending messages to the server
     while (1) {
@@ -85,7 +98,7 @@ void *receive_messages(void *p_client_socket_fd) {
 	    exit(EXIT_FAILURE);
 	}
 
-	printf("Message from another client: %s \n", msg_frm_server);
+	printf("%s\n", msg_frm_server);
 	free(msg_frm_server);
     }
     return NULL;

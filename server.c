@@ -12,11 +12,13 @@ typedef struct {
 } SharedArrayInfo;
 
 typedef struct {
+    char *p_username;
     int sender_socket_fd;
     SharedArrayInfo *p_shared_array_info;
 } ClientHandlerArgs;
 
 void *recv_function(void *client);
+void broadcast_new_client(int *connected_sockets, int connected_sockets_len, int sender_socket_fd, char *username);
 
 int main(int argc, char *argv[]) {
     // TODO: technically not required but it's good practice to close() the socket file descriptors
@@ -58,6 +60,7 @@ int main(int argc, char *argv[]) {
 
     // Step 5: accept the incoming connections that are in the queue
     int connected_socket_fds[5];
+    char *username_pointers[5];
     SharedArrayInfo shared_array_info = { connected_socket_fds, sizeof(connected_socket_fds) }; 
     ClientHandlerArgs client_handler_args[5];
     memset(&connected_socket_fds, 0, sizeof(connected_socket_fds));
@@ -72,30 +75,71 @@ int main(int argc, char *argv[]) {
 	    exit(EXIT_FAILURE);
 	}
 
+	// Get the username of the client
+	char *username = malloc(1024);
+	if (recv(sender_socket_fd, username, 1024, 0) < 0) {
+	    free(username);
+	    perror("recv()");
+	    exit(EXIT_FAILURE);
+	}
+	username_pointers[counter] = username;
+	username = NULL;
+
+	p_client_handler_args->p_username = username_pointers[counter];
 	p_client_handler_args->sender_socket_fd = sender_socket_fd;
 	p_client_handler_args->p_shared_array_info = &shared_array_info;
 
 	connected_socket_fds[counter] = sender_socket_fd;
 
+
 	// Step 6: send message to client
-	char *message = "You have reached the server";
+	char message[1024];
+	sprintf(message, "You have reached the chat server. Welcome %s", p_client_handler_args->p_username); // TODO: check later if this needs to be error handled
+
 	if (send(sender_socket_fd, message, strlen(message), 0) < 0) {
-	    perror("accept()");
+	    perror("send()");
 	    exit(EXIT_FAILURE);
 	}
 
+	printf("A client has connected: %s\n", p_client_handler_args->p_username);
+
+	// TODO: inform other clients connected to the server that another client has connected
+	int arr_len = p_client_handler_args->p_shared_array_info->arr_bytes / sizeof(int);
+	broadcast_new_client(connected_socket_fds, arr_len, sender_socket_fd, username_pointers[counter]);
+
 	// Step 7: make a thread for receiving messages from the client and sending the received message to other clients in the array
-	// TODO: make an array (maybe) for storing the thread ID
+	// TODO: make an array (maybe) for storing the thread IDs
 	pthread_t thread_id; // this variable stores the ID of the newly created thread
 	pthread_create(&thread_id, NULL, recv_function, p_client_handler_args); // TODO: Pass the connected_socket_fd to the recv_function here
 
-	printf("A client has connected!\n");
 
 	counter++;
     }
     return 0;
 }
 
+char *format_message(char *username, char *message) {
+    char *result = malloc(strlen(username) + strlen(message) + 1);
+    sprintf(result, "%s: %s", username, message);
+    return result;
+}
+
+void broadcast_new_client(int *connected_socket_fds, int connected_sockets_len, int sender_socket_fd, char *username) {
+    char *message = malloc(strlen(username) + 100);
+    sprintf(message, "%s has connected!\n", username);
+
+    for (int i = 0; i < connected_sockets_len; i++) {
+	if (sender_socket_fd == connected_socket_fds[i] || connected_socket_fds[i] == 0) {
+	    continue;
+	}
+	if (send(connected_socket_fds[i], message, strlen(message), 0) < 0) {
+	    perror("send()");
+	    exit(EXIT_FAILURE);
+	}
+    }
+    free(message);
+}
+  
 void *recv_function(void *client_handler_args) {
     ClientHandlerArgs *client = client_handler_args;
 
@@ -108,6 +152,8 @@ void *recv_function(void *client_handler_args) {
 	    exit(EXIT_FAILURE);
 	}
 
+	char *name_w_message = format_message(client->p_username, msg_frm_client);
+
 	int len = client->p_shared_array_info->arr_bytes / sizeof(int);
 
 	for (int i = 0; i < len; i++) {
@@ -117,11 +163,15 @@ void *recv_function(void *client_handler_args) {
 	    if (sender_socket_fd == recipient_socket_fd || recipient_socket_fd == 0) {
 		continue;
 	    }
-	    if(send(recipient_socket_fd, msg_frm_client, strlen(msg_frm_client), 0) < 0) {
+
+	    if(send(recipient_socket_fd, name_w_message, strlen(name_w_message), 0) < 0) {
+		free(name_w_message);
+		free(msg_frm_client);
 		perror("accept()");
 		exit(EXIT_FAILURE);
 	    }
 	}
+	free(name_w_message);
 	free(msg_frm_client);
     }
     return NULL;
