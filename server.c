@@ -6,6 +6,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+/* macros */
+#define BUFFER_SIZE 1024
+#define PORT 5100
+
 typedef struct {
     int *p_connected_socket_fds;
     size_t arr_bytes; 
@@ -34,7 +38,7 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in listening_socket_address;
     memset(&listening_socket_address, 0, sizeof(listening_socket_address)); // sets all the members of a struct in C to 0
     listening_socket_address.sin_family = AF_INET; // sets to IPv4
-    listening_socket_address.sin_port = htons(5100); // sets the port to 5100
+    listening_socket_address.sin_port = htons(PORT); // sets the port to 5100
     listening_socket_address.sin_addr.s_addr = htonl(INADDR_ANY); // INADDR_ANY (0.0.0.0) allows the socket to accept connections on any local network interface when used with bind()
 								  
     // Credits: Beej's Guide to Network Programming
@@ -76,8 +80,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Get the username of the client
-	char *username = malloc(1024);
-	if (recv(sender_socket_fd, username, 1024, 0) < 0) {
+	char *username = malloc(BUFFER_SIZE);
+	if (recv(sender_socket_fd, username, BUFFER_SIZE, 0) < 0) {
 	    free(username);
 	    perror("recv()");
 	    exit(EXIT_FAILURE);
@@ -93,7 +97,7 @@ int main(int argc, char *argv[]) {
 
 
 	// Step 6: send message to client
-	char message[1024];
+	char message[BUFFER_SIZE];
 	sprintf(message, "You have reached the chat server. Welcome %s", p_client_handler_args->p_username); // TODO: check later if this needs to be error handled
 
 	if (send(sender_socket_fd, message, strlen(message), 0) < 0) {
@@ -144,9 +148,9 @@ void *recv_function(void *client_handler_args) {
     ClientHandlerArgs *client = client_handler_args;
 
     while (1) {
-	char *msg_frm_client = malloc(1024);
+	char *msg_frm_client = malloc(BUFFER_SIZE);
 
-	if (recv(client->sender_socket_fd, msg_frm_client, 1024, 0) < 0) {
+	if (recv(client->sender_socket_fd, msg_frm_client, BUFFER_SIZE, 0) < 0) {
 	    free(msg_frm_client);
 	    perror("recv()");
 	    exit(EXIT_FAILURE);
