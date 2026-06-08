@@ -15,7 +15,8 @@
 
 void *receive_messages(void *p_client_socket_fd);
 
-int main(int argc, char *argv[]) {
+int
+main(int argc, char *argv[]) {
     // TODO: clients should be able to set their username
     if (argc < 2) {
 	printf("Please input your username\n");
@@ -87,7 +88,8 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void *receive_messages(void *p_client_socket_fd) {
+void *
+receive_messages(void *p_client_socket_fd) {
     int client_socket_fd = *(int *)p_client_socket_fd;
     while (1) {
 	char *msg_frm_server = malloc(BUFFER_SIZE); // NOTE: I know this could overflow, but oh well I'll deal with it later

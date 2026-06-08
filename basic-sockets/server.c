@@ -5,7 +5,8 @@
 #include <netinet/in.h>
 
 
-int main(int argc, char *argv[]) {
+int
+main(int argc, char *argv[]) {
 
     // Step 1: declare the socket
     int listening_socket_fd = socket(AF_INET, SOCK_STREAM, 0);

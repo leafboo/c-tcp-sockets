@@ -7,7 +7,8 @@
 #include <arpa/inet.h>
 #include <malloc.h>
 
-int main(int argc, char *argv[]) {
+int
+main(int argc, char *argv[]) {
 
     // Step 1: declare the socket
     int client_socket_fd = socket(AF_INET, SOCK_STREAM, 0);

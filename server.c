@@ -24,7 +24,8 @@ typedef struct {
 void *recv_function(void *client);
 void broadcast_new_client(int *connected_sockets, int connected_sockets_len, int sender_socket_fd, char *username);
 
-int main(int argc, char *argv[]) {
+int
+main(int argc, char *argv[]) {
     // TODO: technically not required but it's good practice to close() the socket file descriptors
     // of connected sockets
 
@@ -122,13 +123,15 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-char *format_message(char *username, char *message) {
+char *
+format_message(char *username, char *message) {
     char *result = malloc(strlen(username) + strlen(message) + 1);
     sprintf(result, "%s: %s", username, message);
     return result;
 }
 
-void broadcast_new_client(int *connected_socket_fds, int connected_sockets_len, int sender_socket_fd, char *username) {
+void
+broadcast_new_client(int *connected_socket_fds, int connected_sockets_len, int sender_socket_fd, char *username) {
     char *message = malloc(strlen(username) + 100);
     sprintf(message, "%s has connected!\n", username);
 
@@ -144,7 +147,8 @@ void broadcast_new_client(int *connected_socket_fds, int connected_sockets_len, 
     free(message);
 }
   
-void *recv_function(void *client_handler_args) {
+void *
+recv_function(void *client_handler_args) {
     ClientHandlerArgs *client = client_handler_args;
 
     while (1) {
