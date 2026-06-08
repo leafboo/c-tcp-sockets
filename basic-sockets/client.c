@@ -7,6 +7,12 @@
 #include <arpa/inet.h>
 #include <malloc.h>
 
+/* macros */
+#define BUFFER_SIZE 1024
+#define PORT 5100
+
+void *safe_malloc(size_t size);
+
 int
 main(int argc, char *argv[]) {
 
@@ -17,7 +23,7 @@ main(int argc, char *argv[]) {
     struct sockaddr_in server_address;
     memset(&server_address, 0, sizeof(server_address));
     server_address.sin_family = AF_INET; // sets to IPv4
-    server_address.sin_port = htons(5100); // sets the port to 5100
+    server_address.sin_port = htons(PORT); // sets the port to 5100
     if (inet_pton(AF_INET, "127.0.0.1", &server_address.sin_addr) != 1) {
 	perror("inet_pton()");
 	exit(EXIT_FAILURE);
@@ -30,8 +36,8 @@ main(int argc, char *argv[]) {
     }
 
     // Step 4: read and write 
-    char *msg_frm_server = malloc(1024);
-    if (recv(client_socket_fd, msg_frm_server, malloc_usable_size(msg_frm_server), 0) < 0) {
+    char *msg_frm_server = safe_malloc(BUFFER_SIZE);
+    if (recv(client_socket_fd, msg_frm_server, BUFFER_SIZE, 0) < 0) {
 	perror("recv()");
 	exit(EXIT_FAILURE);
     }
@@ -40,4 +46,14 @@ main(int argc, char *argv[]) {
 
 
     return 0;
+}
+
+void *
+safe_malloc(size_t size) {
+   void *ptr = malloc(size);
+   if (ptr == NULL) {
+       fprintf(stderr, "malloc() failed. Insufficient memory.");
+       exit(EXIT_FAILURE);
+   }
+   return ptr;
 }

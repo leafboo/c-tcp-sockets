@@ -1,4 +1,5 @@
 #include <asm-generic/socket.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -23,6 +24,7 @@ typedef struct {
 
 void *recv_function(void *client);
 void broadcast_new_client(int *connected_sockets, int connected_sockets_len, int sender_socket_fd, char *username);
+void *safe_malloc(size_t size);
 
 int
 main(int argc, char *argv[]) {
@@ -81,7 +83,7 @@ main(int argc, char *argv[]) {
 	}
 
 	// Get the username of the client
-	char *username = malloc(BUFFER_SIZE);
+	char *username = safe_malloc(BUFFER_SIZE);
 	if (recv(sender_socket_fd, username, BUFFER_SIZE, 0) < 0) {
 	    free(username);
 	    perror("recv()");
@@ -125,14 +127,14 @@ main(int argc, char *argv[]) {
 
 char *
 format_message(char *username, char *message) {
-    char *result = malloc(strlen(username) + strlen(message) + 1);
+    char *result = safe_malloc(strlen(username) + strlen(message) + 1);
     sprintf(result, "%s: %s", username, message);
     return result;
 }
 
 void
 broadcast_new_client(int *connected_socket_fds, int connected_sockets_len, int sender_socket_fd, char *username) {
-    char *message = malloc(strlen(username) + 100);
+    char *message = safe_malloc(strlen(username) + 100);
     sprintf(message, "%s has connected!\n", username);
 
     for (int i = 0; i < connected_sockets_len; i++) {
@@ -152,7 +154,7 @@ recv_function(void *client_handler_args) {
     ClientHandlerArgs *client = client_handler_args;
 
     while (1) {
-	char *msg_frm_client = malloc(BUFFER_SIZE);
+	char *msg_frm_client = safe_malloc(BUFFER_SIZE);
 
 	if (recv(client->sender_socket_fd, msg_frm_client, BUFFER_SIZE, 0) < 0) {
 	    free(msg_frm_client);
@@ -183,4 +185,14 @@ recv_function(void *client_handler_args) {
 	free(msg_frm_client);
     }
     return NULL;
+}
+
+void *
+safe_malloc(size_t size) {
+   void *ptr = malloc(size);
+   if (ptr == NULL) {
+       fprintf(stderr, "malloc() failed. Insufficient memory.");
+       exit(EXIT_FAILURE);
+   }
+   return ptr;
 }

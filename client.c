@@ -7,13 +7,13 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <malloc.h>
 
 /* macros */
 #define PORT 5100
 #define BUFFER_SIZE 1024
 
 void *receive_messages(void *p_client_socket_fd);
+void *safe_malloc(size_t size);
 
 int
 main(int argc, char *argv[]) {
@@ -52,8 +52,8 @@ main(int argc, char *argv[]) {
     }
 
     // Step 4: receive the welcome message from the server
-    char *msg_frm_server = malloc(BUFFER_SIZE);
-    if (recv(client_socket_fd, msg_frm_server, malloc_usable_size(msg_frm_server), 0) < 0) { // NOTE: why is malloc_usable_size() used here???
+    char *msg_frm_server = safe_malloc(BUFFER_SIZE);
+    if (recv(client_socket_fd, msg_frm_server, BUFFER_SIZE, 0) < 0) {
 	perror("recv()");
 	exit(EXIT_FAILURE);
     }
@@ -92,8 +92,8 @@ void *
 receive_messages(void *p_client_socket_fd) {
     int client_socket_fd = *(int *)p_client_socket_fd;
     while (1) {
-	char *msg_frm_server = malloc(BUFFER_SIZE); // NOTE: I know this could overflow, but oh well I'll deal with it later
-	ssize_t bytes_received = recv(client_socket_fd, msg_frm_server, malloc_usable_size(msg_frm_server), 0);
+	char *msg_frm_server = safe_malloc(BUFFER_SIZE); // NOTE: I know this could overflow, but oh well I'll deal with it later
+	ssize_t bytes_received = recv(client_socket_fd, msg_frm_server, BUFFER_SIZE, 0);
 
 	if(bytes_received < 0) {
 	    perror("recv()");
@@ -108,4 +108,14 @@ receive_messages(void *p_client_socket_fd) {
 	free(msg_frm_server);
     }
     return NULL;
+}
+
+void *
+safe_malloc(size_t size) {
+   void *ptr = malloc(size);
+   if (ptr == NULL) {
+       fprintf(stderr, "malloc() failed. Insufficient memory.");
+       exit(EXIT_FAILURE);
+   }
+   return ptr;
 }

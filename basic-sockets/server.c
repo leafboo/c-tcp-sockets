@@ -4,6 +4,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+/* macros */
+#define PORT 5100
 
 int
 main(int argc, char *argv[]) {
@@ -18,7 +20,7 @@ main(int argc, char *argv[]) {
     struct sockaddr_in listening_socket_address;
     memset(&listening_socket_address, 0, sizeof(listening_socket_address)); // sets all the members of a struct in C to 0
     listening_socket_address.sin_family = AF_INET; // sets to IPv4
-    listening_socket_address.sin_port = htons(5100); // sets the port to 5100
+    listening_socket_address.sin_port = htons(PORT); // sets the port to 5100
     listening_socket_address.sin_addr.s_addr = htonl(INADDR_ANY); // sets IP address to 0.0.0.0
 
     // Step 3: assigns the address in the struct to the socket via socket_fd returned by socket()
